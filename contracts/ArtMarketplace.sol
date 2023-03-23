@@ -57,20 +57,25 @@ contract ArtMarketplace {
 
 
 
-    function buyERC721(uint256 tokenId) public {
+   function buyERC721(uint256 tokenId) public {
         require(_erc721Listed[tokenId], "Token not listed");
         uint256 price = _erc721Prices[tokenId];
         uint256 commission = price.mul(_commissionPercentage).div(100);
         uint256 sellerShare = price.sub(commission);
 
-        _artCoin.transferFrom(msg.sender, address(this), commission);
-        _artCoin.transferFrom(msg.sender, _digitalPieces.ownerOf(tokenId), sellerShare);
+        address seller = _digitalPieces.ownerOf(tokenId);
 
-        _digitalPieces.transferFrom(address(this), msg.sender, tokenId);
+        // Cambiar el destinatario de la comisión al contrato del Marketplace
+        _artCoin.transferFrom(msg.sender, address(this), commission);
+
+        // Cambiar el destinatario de la parte del vendedor al vendedor
+        _artCoin.transferFrom(msg.sender, seller, sellerShare);
+
+        _digitalPieces.transferFrom(seller, msg.sender, tokenId);
         _erc721Listed[tokenId] = false;
 
-        emit ERC721Purchased(tokenId, msg.sender);
-    }
+    emit ERC721Purchased(tokenId, msg.sender);
+}
 
     function buyERC1155(uint256 tokenId, uint256 amount) public {
         require(_erc1155Listed[tokenId], "Token not listed");
