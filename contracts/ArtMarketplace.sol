@@ -23,6 +23,7 @@ contract ArtMarketplace is ERC721URIStorage {
     mapping(uint256 => uint256) private _erc1155Prices;
     mapping(uint256 => bool) private _erc1155Listed;
     mapping(uint256 => string) private _tokenURIs;
+    mapping(uint256 => string) private _localTokenURIs;
 
     event ERC721Listed(uint256 tokenId, uint256 price);
     event ERC1155Listed(uint256 tokenId, uint256 price);
@@ -48,16 +49,22 @@ contract ArtMarketplace is ERC721URIStorage {
         _;
     }
 
-    function listERC721(uint256 tokenId, uint256 price, string memory uri) public onlyOwner {
+    function setTokenURI(uint256 tokenId, string memory uri) public {
         require(_digitalPieces.ownerOf(tokenId) == msg.sender, "Not the owner");
+        _localTokenURIs[tokenId] = uri;
+    }
+
+    function listERC721(uint256 tokenId, uint256 price, string memory uri) public {
+        require(_digitalPieces.ownerOf(tokenId) == msg.sender, "Not the owner");
+        setTokenURI(tokenId, uri);
         _digitalPieces.transferFrom(msg.sender, address(this), tokenId);
         _erc721Prices[tokenId] = price;
         _erc721Listed[tokenId] = true;
-        _setTokenURI(tokenId, uri);
         emit ERC721Listed(tokenId, price);
-    }
+}
 
-    function listERC1155(uint256 tokenId, uint256 price) public onlyOwner {
+
+    function listERC1155(uint256 tokenId, uint256 price) public {
         require(_digitalCollection.balanceOf(msg.sender, tokenId) > 0, "Not the owner");
         _digitalCollection.setTokenSeller(tokenId, msg.sender);
         _digitalCollection.safeTransferFrom(msg.sender, address(this), tokenId, 1, "");
@@ -74,7 +81,7 @@ contract ArtMarketplace is ERC721URIStorage {
 
         address seller = _digitalPieces.ownerOf(tokenId);
 
-        // Cambio el destinatario de la comisión al contrato del Marketplace
+        // Cambio el destinatario de la comisión al contrato del Marketplace 
         _artCoin.transferFrom(msg.sender, address(this), commission);
 
         // Cambio el destinatario del importe del vendedor al vendedor
@@ -123,23 +130,11 @@ contract ArtMarketplace is ERC721URIStorage {
     }
 
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
-
-        string memory _tokenURI = _tokenURIs[tokenId];
-        string memory baseURI = _baseURI();
-
-        // If there is no base URI, return the token URI.
-        if (bytes(baseURI).length == 0) {
-            return _tokenURI;
+        if (_digitalPieces.ownerOf(tokenId) == address(this)) {
+            return _localTokenURIs[tokenId];
         }
-        // If both are set, concatenate the baseURI and tokenURI (via abi.encodePacked).
-        if (bytes(_tokenURI).length > 0) {
-            return string(abi.encodePacked(baseURI, _tokenURI));
-        }
-
         return super.tokenURI(tokenId);
     }
-
 
     //FASE ADICIONAL
         //Funcionalidades extra solo para administradores
